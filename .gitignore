@@ -1,0 +1,32 @@
+# Install-only репозиторий: белый список.
+# По умолчанию НА GitHub не попадает НИЧЕГО. Публикуются только явно
+# разрешённые ниже рабочие файлы расширения. Любой новый файл (заметки, доки,
+# аудиты, исходники, ключи, всё, что генерирует ИИ) игнорируется автоматически.
+# Добавляешь новый РАБОЧИЙ файл в дистрибутив — добавь его сюда строкой "!...".
+
+# 1) Игнорируем всё в корне.
+/*
+
+# 2) Разрешаем только рабочие файлы и папки расширения.
+!/.gitignore
+!/README.md
+!/CHANGELOG.md
+!/manifest.json
+!/background.js
+!/fonts/
+!/icons/
+!/popup/
+!/content/
+
+# 3) Внутри content/ публикуем ТОЛЬКО собранные бандлы, а не исходные модули
+#    (исходники собираются в content/player-bundle.js и живут только локально).
+/content/*
+!/content/page-bridge.js
+!/content/player-bundle.js
+!/content/player-gate.js
+!/content/player.css
+!/content/room-sync.js
+!/content/site-room.js
+!/content/site.js
+!/content/loudness-worklet.js
+!/content/peak-guard-worklet.js

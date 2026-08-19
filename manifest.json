@@ -1,0 +1,180 @@
+{
+  "manifest_version": 3,
+  "name": "YoHo Stream Mode",
+  "version": "3.7.21",
+  "version_name": "3.7.21 beta",
+  "minimum_chrome_version": "105",
+  "description": "Блюр запреток, маркеры на прогресс-баре, нормализация звука и совместный просмотр для yoho.pw",
+  "permissions": [
+    "alarms",
+    "storage",
+    "tabs",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "http://localhost/*",
+    "https://yoho.pw/*",
+    "https://reyoho.ru/*",
+    "https://reyoho.com/*",
+    "https://*.alloha.tv/*",
+    "https://*.stravers.live/*",
+    "https://*.obrut.show/*",
+    "https://*.kodik.info/*",
+    "https://*.kodik.biz/*",
+    "https://*.kodik.cc/*",
+    "https://*.kodik.online/*",
+    "https://*.kodikapi.com/*",
+    "https://*.kodik-api.com/*",
+    "https://*.bhcesh.me/*",
+    "https://*.collaps.org/*",
+    "https://*.collaps.cc/*",
+    "https://*.collaps.ink/*",
+    "https://*.ortified.ws/*",
+    "https://*.vibix.org/*",
+    "https://*.graphicslab.io/*",
+    "https://*.videoframe2.com/*",
+    "https://*.turbo.ms/*",
+    "wss://irc-ws.chat.twitch.tv/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png",
+      "48": "icons/48.png",
+      "128": "icons/128.png"
+    },
+    "default_title": "YoHo Stream Mode"
+  },
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "fonts/*.woff2",
+        "content/loudness-worklet.js",
+        "content/peak-guard-worklet.js"
+      ],
+      "matches": [
+        "https://yoho.pw/*",
+        "http://localhost/*",
+        "https://reyoho.ru/*",
+        "https://reyoho.com/*",
+        "https://*.alloha.tv/*",
+        "https://*.stravers.live/*",
+        "https://*.obrut.show/*",
+        "https://*.kodik.info/*",
+        "https://*.kodik.biz/*",
+        "https://*.kodik.cc/*",
+        "https://*.kodik.online/*",
+        "https://*.kodikapi.com/*",
+        "https://*.kodik-api.com/*",
+        "https://*.bhcesh.me/*",
+        "https://*.collaps.org/*",
+        "https://*.collaps.cc/*",
+        "https://*.collaps.ink/*",
+        "https://*.ortified.ws/*",
+        "https://*.vibix.org/*",
+        "https://*.graphicslab.io/*",
+        "https://*.videoframe2.com/*",
+        "https://*.turbo.ms/*"
+      ]
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://yoho.pw/*",
+        "http://localhost/*",
+        "https://reyoho.ru/*",
+        "https://reyoho.com/*"
+      ],
+      "js": [
+        "content/room-sync.js",
+        "content/site.js",
+        "content/site-room.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://yoho.pw/*",
+        "http://localhost/*",
+        "https://reyoho.ru/*",
+        "https://reyoho.com/*",
+        "https://*.alloha.tv/*",
+        "https://*.stravers.live/*",
+        "https://*.obrut.show/*",
+        "https://*.kodik.info/*",
+        "https://*.kodik.biz/*",
+        "https://*.kodik.cc/*",
+        "https://*.kodik.online/*",
+        "https://*.kodikapi.com/*",
+        "https://*.kodik-api.com/*",
+        "https://*.bhcesh.me/*",
+        "https://*.collaps.org/*",
+        "https://*.collaps.cc/*",
+        "https://*.collaps.ink/*",
+        "https://*.ortified.ws/*",
+        "https://*.vibix.org/*",
+        "https://*.graphicslab.io/*",
+        "https://*.videoframe2.com/*",
+        "https://*.turbo.ms/*"
+      ],
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true,
+      "js": [
+        "content/room-sync.js",
+        "content/player-gate.js",
+        "content/player-bundle.js"
+      ],
+      "css": [
+        "content/player.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://yoho.pw/*",
+        "http://localhost/*",
+        "https://reyoho.ru/*",
+        "https://reyoho.com/*",
+        "https://*.alloha.tv/*",
+        "https://*.stravers.live/*",
+        "https://*.obrut.show/*",
+        "https://*.kodik.info/*",
+        "https://*.kodik.biz/*",
+        "https://*.kodik.cc/*",
+        "https://*.kodik.online/*",
+        "https://*.kodikapi.com/*",
+        "https://*.kodik-api.com/*",
+        "https://*.bhcesh.me/*",
+        "https://*.collaps.org/*",
+        "https://*.collaps.cc/*",
+        "https://*.collaps.ink/*",
+        "https://*.ortified.ws/*",
+        "https://*.vibix.org/*",
+        "https://*.graphicslab.io/*",
+        "https://*.videoframe2.com/*",
+        "https://*.turbo.ms/*"
+      ],
+      "js": [
+        "content/page-bridge.js"
+      ],
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true,
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ]
+}
