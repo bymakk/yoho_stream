@@ -645,6 +645,18 @@
       if (!message.ok) lastTranslationAt = Date.now();
       return false;
     }
+    // Настройки могут измениться на лету (человек включил режим в попапе), а
+    // сайту важно знать об этом до того, как кого-то позвали. Раньше это был
+    // слепой опрос раз в 10с — фон будили сообщением на КАЖДОЙ вкладке сайта
+    // для КАЖДОГО посетителя всё время, пока вкладка открыта, хотя together
+    // меняется только по одному действию: сохранение в попапе. Фон уже
+    // рассылает `settings-update` во все кадры вкладки на каждое такое
+    // сохранение (background.entry.js, settings-changed) — реагируем на него,
+    // а не опрашиваем впустую.
+    if (message?.type === "settings-update") {
+      void refreshExtensionMark();
+      return false;
+    }
     if (message?.type === "room-playback-changed") {
       if (typeof message.currentTimeSec === "number") {
         // Озвучку переносим из прежнего кеша: раньше объект пересобирался без
@@ -702,16 +714,12 @@
         fromSec: d.fromSec,
         durationSec: d.durationSec,
         loop: d.loop,
+        restart: d.restart,
         season: d.season,
         episode: d.episode,
         name: d.name,
       });
     });
-    // Настройки могут измениться на лету (человек включил режим в попапе), а
-    // сайту важно знать об этом до того, как кого-то позвали.
-    setInterval(() => {
-      if (document.visibilityState === "visible") void refreshExtensionMark();
-    }, 10_000);
     window.addEventListener("pagehide", teardown);
   }
 

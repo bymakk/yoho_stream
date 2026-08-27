@@ -24,6 +24,33 @@
   let refreshDebounceTimer = null;
   let beaconObserver = null;
   let siteActive = false;
+  let abandonedIframeObserver = null;
+
+  function extStoreGet(key) {
+    return new Promise((resolve) => {
+      try {
+        if (!chrome.storage?.local) {
+          resolve(undefined);
+          return;
+        }
+        chrome.storage.local.get(key, (r) => {
+          void chrome.runtime.lastError;
+          resolve(r?.[key]);
+        });
+      } catch {
+        resolve(undefined);
+      }
+    });
+  }
+  function extStoreSet(obj) {
+    try {
+      chrome.storage.local.set(obj, () => {
+        void chrome.runtime.lastError;
+      });
+    } catch {
+      /* storage unavailable */
+    }
+  }
 
   // ── Safe message send ────────────────────────────────────────────────────────
   function safeMessage(msg) {
@@ -65,6 +92,21 @@
       /^\/(film|series|movie|tv|anime|cartoon|show)\/([^/?#]+)/i,
     );
     return m ? `${m[1].toLowerCase()}/${m[2]}` : null;
+  }
+
+  /** After SPA nav the URL changes before the beacon node does. Don't push the
+   *  previous title's kp as if it were the new page. Slug paths are incomparable. */
+  function pathIdMatchesMeta(meta) {
+    const path = filmPathId();
+    if (!meta) return true;
+    // /patrol, home, room: leftover [data-yoho-film] from the previous SPA
+    // page is not the current title. Trusting it re-owns the tab overlay.
+    if (!path) return false;
+    const id = path.split("/")[1];
+    if (!id || !/^\d+$/.test(id)) return true;
+    if (meta.kp && id === String(meta.kp)) return true;
+    if (meta.tmdb != null && id === String(meta.tmdb)) return true;
+    return false;
   }
 
   /** Identity of the API-relevant metadata - changes here must trigger a refetch
@@ -117,6 +159,10 @@
 
     if (key === currentFilmKey && sig === currentMetaSig) return;
 
+    if (meta && !pathIdMatchesMeta(meta)) {
+      return;
+    }
+
     if (fetchAbortController) fetchAbortController.abort();
 
     if (!meta) {
@@ -131,6 +177,30 @@
     fetchAbortController = new AbortController();
     const seq = ++filmFetchSeq;
     const keyChanged = key !== currentFilmKey;
+    if (keyChanged && currentFilmKey) {
+      safeMessage({ type: "film-clear" });
+    }
+    const cached = await extStoreGet("yohoWarnCache");
+    if (
+      cached &&
+      cached.key === key &&
+      cached.sig === sig &&
+      typeof cached.at === "number" &&
+      Date.now() - cached.at < REFRESH_MIN_INTERVAL_MS &&
+      Array.isArray(cached.warnings)
+    ) {
+      currentFilmKey = key;
+      currentMetaSig = sig;
+      lastRefreshAt = cached.at;
+      safeMessage({
+        type: "film-update",
+        filmKey: key,
+        filmMeta: meta,
+        warnings: cached.warnings,
+        seq,
+      });
+      return;
+    }
     const result = await fetchWarnings(meta, fetchAbortController.signal);
     if (seq !== filmFetchSeq) return; // superseded by a newer request
     // On failure, leave currentFilmKey unchanged so a later nav/focus/observer
@@ -153,6 +223,8 @@
 
     currentFilmKey = key;
     currentMetaSig = sig;
+    lastRefreshAt = Date.now();
+    extStoreSet({ yohoWarnCache: { key, sig, at: lastRefreshAt, warnings: result.warnings } });
     safeMessage({
       type: "film-update",
       filmKey: key,
@@ -179,6 +251,7 @@
     // retryable immediately rather than blocked for the full interval.
     if (!result.ok) return;
     lastRefreshAt = now;
+    extStoreSet({ yohoWarnCache: { key, sig: metaSignature(meta), at: now, warnings: result.warnings } });
 
     safeMessage({
       type: "film-update",
@@ -297,6 +370,17 @@
   let runtimeInstallId = null;
   const runtimeReported = new Set();
   let runtimeTimer = null;
+  /**
+   * Контекст (плеер+озвучка+серия) уже опознан для текущего фильма — дальше
+   * опрашиваем РЕДКО. Быстрый темп нужен только в первые секунды, пока плеер
+   * не объявил длительность; после первого успешного отчёта дедуп всё равно
+   * не даст уйти повторному POST, но фон до этого места каждый раз будили
+   * сообщением зря — на двухчасовом фильме это тысяча с лишним обращений к
+   * service worker без всякой пользы.
+   */
+  let runtimeSettled = false;
+  const RUNTIME_POLL_FAST_MS = 6000;
+  const RUNTIME_POLL_SLOW_MS = 60000;
 
   function ensureRuntimeInstallId(cb) {
     if (runtimeInstallId) {
@@ -360,13 +444,28 @@
     const episode = isSeries && Number.isInteger(pb?.episode) ? pb.episode : null;
     const dubName = typeof pb?.translation === "string" ? pb.translation : "";
     const dedupKey = `${kp}|${meta.mediaType}|${season}|${episode}|${player}|${dubName}`;
-    if (runtimeReported.has(dedupKey)) return; // этот кортеж уже отчитан в сессии
+    if (runtimeReported.has(dedupKey)) return;
+    const posted = await extStoreGet("yohoRuntimePosted");
+    const postedList = Array.isArray(posted) ? posted : [];
+    if (postedList.includes(dedupKey)) {
+      runtimeReported.add(dedupKey);
+      if (!runtimeSettled) {
+        runtimeSettled = true;
+        rescheduleRuntimeTimer();
+      }
+      return;
+    }
     runtimeReported.add(dedupKey);
+    if (!runtimeSettled) {
+      runtimeSettled = true;
+      rescheduleRuntimeTimer(); // контекст известен — переходим на редкий опрос
+    }
     ensureRuntimeInstallId((installId) => {
       if (!installId) {
         runtimeReported.delete(dedupKey); // не смогли — дадим повтору шанс
         return;
       }
+      extStoreSet({ yohoRuntimePosted: postedList.concat(dedupKey) });
       try {
         // Плеер шлёт СЫРОЕ имя (playerName): нормализацию к источнику и проверку
         // по белому списку делает сервер (sourceFromExtensionPlayer). Длительность
@@ -395,15 +494,25 @@
     });
   }
 
-  function startRuntimeReporting() {
-    if (runtimeTimer) return;
-    void reportRuntimeOnce();
-    // Каждые 6с: ловит и оседание длительности после загрузки, и смену
-    // озвучки/серии. reportRuntimeOnce идемпотентна по кортежу — POST уходит
-    // только на новый (плеер, озвучка), не каждый тик.
+  function rescheduleRuntimeTimer() {
+    if (!runtimeTimer) return; // ещё не запущен — startRuntimeReporting поставит нужный темп сам
+    clearInterval(runtimeTimer);
     runtimeTimer = setInterval(() => {
       void reportRuntimeOnce();
-    }, 6000);
+    }, runtimeSettled ? RUNTIME_POLL_SLOW_MS : RUNTIME_POLL_FAST_MS);
+  }
+
+  function startRuntimeReporting() {
+    if (runtimeTimer) return;
+    runtimeSettled = false; // новый фильм — снова быстрый темп, пока контекст не осел
+    void reportRuntimeOnce();
+    // Быстро (6с), пока не опознали плеер+озвучку+серию — ловит оседание
+    // длительности после загрузки. Дальше reportRuntimeOnce переводит таймер
+    // на редкий темп (см. rescheduleRuntimeTimer): идемпотентность по кортежу
+    // всё равно не даст POST на повторе, экономим само обращение к фону.
+    runtimeTimer = setInterval(() => {
+      void reportRuntimeOnce();
+    }, RUNTIME_POLL_FAST_MS);
   }
 
   function stopRuntimeReporting() {
@@ -449,6 +558,15 @@
     window.addEventListener("popstate", () =>
       window.dispatchEvent(new Event("yoho-nav"))
     );
+    // Next.js App Router owns history.pushState; the wrap above is overwritten
+    // on hydrate. Navigation API still fires after the URL has changed.
+    try {
+      globalThis.navigation?.addEventListener("navigatesuccess", () => {
+        window.dispatchEvent(new Event("yoho-nav"));
+      });
+    } catch {
+      /* no Navigation API */
+    }
   }
 
   // ── MutationObserver for beacon ──────────────────────────────────────────────
@@ -501,12 +619,15 @@
     refreshDebounceTimer = null;
     beaconObserver?.disconnect();
     beaconObserver = null;
+    abandonedIframeObserver?.disconnect();
+    abandonedIframeObserver = null;
   }
 
   function restoreSiteAfterBfcache() {
     if (!siteActive) return;
     watchBeacon();
     void onFilmChanged();
+    syncAbandonedFilmIframeWatch();
   }
 
   // ── Init ────────────────────────────────────────────────────────────────────
@@ -556,6 +677,7 @@
           safeMessage({ type: "film-clear" });
         }
       }
+      syncAbandonedFilmIframeWatch();
       setTimeout(onFilmChanged, NAV_SETTLE_MS);
     });
 
@@ -570,6 +692,60 @@
     });
 
     onFilmChanged();
+    syncAbandonedFilmIframeWatch();
+  }
+
+  function isPatrolPath(pathname) {
+    return pathname === "/patrol" || pathname.startsWith("/patrol/");
+  }
+
+  /** Same-origin /film/id iframe without ?patrol=1, left behind after SPA to /patrol. */
+  function abandonedFilmIframeHref(iframe) {
+    let href = "";
+    try { href = iframe.src || ""; } catch { href = ""; }
+    if (!href || href === "about:blank") {
+      try { href = iframe.contentWindow.location.href; } catch { /* cross-origin or gone */ }
+    }
+    if (!href || href === "about:blank") return null;
+    try {
+      const u = new URL(href, location.href);
+      if (!YOHO_ORIGINS.includes(u.origin)) return null;
+      if (!/^\/(film|series|movie|tv|anime|cartoon|show)\//i.test(u.pathname)) return null;
+      if (u.searchParams.get("patrol") === "1") return null;
+      return u.href;
+    } catch {
+      return null;
+    }
+  }
+
+  function blankAbandonedFilmIframes() {
+    if (window !== window.top) return;
+    if (!isPatrolPath(location.pathname)) return;
+    for (const iframe of document.querySelectorAll("iframe")) {
+      const href = abandonedFilmIframeHref(iframe);
+      if (!href) continue;
+      try { iframe.src = "about:blank"; } catch { /* gone */ }
+    }
+  }
+
+  // site.js only runs in the top frame (no all_frames in manifest) — the
+  // leftover-media-under-patrol case for nested same-origin player frames is
+  // handled by content/player.js (its bundle IS all_frames), not here.
+  //
+  // The observer only needs to run while ON /patrol: attach on entry, detach
+  // on exit, instead of scanning the whole document's DOM churn on every page
+  // of the site for a check that's relevant on exactly one route.
+  function syncAbandonedFilmIframeWatch() {
+    if (isPatrolPath(location.pathname)) {
+      blankAbandonedFilmIframes();
+      if (!abandonedIframeObserver) {
+        abandonedIframeObserver = new MutationObserver(blankAbandonedFilmIframes);
+        abandonedIframeObserver.observe(document.documentElement, { childList: true, subtree: true });
+      }
+    } else if (abandonedIframeObserver) {
+      abandonedIframeObserver.disconnect();
+      abandonedIframeObserver = null;
+    }
   }
 
   init();
