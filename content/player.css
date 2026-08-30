@@ -35,7 +35,7 @@
   align-items: center !important;
   gap: 9px !important;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.65) !important;
-  transition: opacity 0.25s ease, top 0.2s ease !important;
+  transition: opacity 0.25s ease, top 0.2s ease, visibility 0s !important;
 }
 
 /* Venom/Collaps: `.player_1JR * { font-weight: var(--vp-font-weight-base) }` - weight on text nodes */
@@ -47,8 +47,22 @@
   font-variation-settings: "wght" 600 !important;
 }
 
+/*
+ * Скрытая пилюля должна ПЕРЕСТАВАТЬ существовать для отрисовки и для мыши.
+ *
+ * Раньше тут был только `opacity: 0`, а сама пилюля оставалась `display: flex`
+ * с околомаксимальным z-index и РАБОТАЮЩИМ backdrop-filter — то есть почти весь
+ * просмотр над видео висел невидимый слой, который композитор обязан считать.
+ * Плюс кнопки внутри (`pointer-events: auto`) продолжали ловить курсор, если
+ * сцена успела их показать: невидимый перехватчик поверх плеера.
+ *
+ * `visibility` снимается ОТЛОЖЕННО на длительность затухания — плавность
+ * сохраняется, но по её окончании узел выпадает и из отрисовки, и из хит-теста.
+ */
 .yoho-warning-pill.yoho-hidden {
   opacity: 0 !important;
+  visibility: hidden !important;
+  transition: opacity 0.25s ease, top 0.2s ease, visibility 0s 0.25s !important;
 }
 
 /* Lowered when the viewing-info overlay occupies the top-center slot */
@@ -286,9 +300,28 @@
   line-height: 1.3 !important;
   white-space: nowrap !important;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.65) !important;
+  /* Показ: прозрачность плавно, видимость — сразу, иначе первый кадр плашка
+     не рисуется и появление выглядит рывком. */
+  transition: opacity 0.28s ease, visibility 0s !important;
 }
 
-.yoho-info-overlay.yoho-hidden { display: none !important; }
+/*
+ * Скрытие — затуханием, а не рывком.
+ *
+ * Раньше здесь стоял `display: none`, и плашка появлялась и пропадала мгновенно.
+ * Прозрачность ставится ИНЛАЙНОМ из JS (там уже `!important`), поэтому тут её не
+ * трогаем — иначе инлайн всё равно победит. Здесь только `visibility`, и её
+ * переключение ОТЛОЖЕНО на длительность затухания: плашка успевает погаснуть и
+ * лишь потом выпадает из отрисовки и хит-теста.
+ *
+ * `visibility` вместо «просто opacity: 0» в конечном состоянии важна ещё и
+ * потому, что невидимый элемент не красится — а значит не тянет за собой
+ * backdrop-filter над видео всё время просмотра.
+ */
+.yoho-info-overlay.yoho-hidden {
+  visibility: hidden !important;
+  transition: opacity 0.28s ease, visibility 0s 0.28s !important;
+}
 
 /* Совместный просмотр: плашка «нажмите, чтобы присоединиться». Кликабельна —
    именно её клик служит тем жестом, без которого браузер не даёт стартовать
