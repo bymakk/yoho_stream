@@ -7,7 +7,7 @@
 **Расширение для Chrome для просмотра фильмов и сериалов на [yoho.pw](https://yoho.pw) / [reyoho.ru](https://reyoho.ru), в первую очередь для стримеров.**
 Прячет запретные сцены, выводит информацию о фильме в OBS, нормализует звук и показывает Twitch-чат в плеере.
 
-**Бета:** [3.7.33](https://github.com/bymakk/yoho_stream/releases/tag/v3.7.33-beta) · **[Chrome Web Store](https://chromewebstore.google.com/detail/yoho-stream-mode/akgkcglmdamdfmbcefoekmbjaebeghoe)**
+**Бета:** [3.7.34](https://github.com/bymakk/yoho_stream/releases/tag/v3.7.34-beta) · **[Chrome Web Store](https://chromewebstore.google.com/detail/yoho-stream-mode/akgkcglmdamdfmbcefoekmbjaebeghoe)**
 
 Chrome · Edge · Brave · Opera (Chromium 104+)
 
@@ -44,7 +44,7 @@ Chrome · Edge · Brave · Opera (Chromium 104+)
 
 | Сборка | Релиз | Скачать |
 |--------|-------|---------|
-| **3.7.33 beta** | [релиз](https://github.com/bymakk/yoho_stream/releases/tag/v3.7.33-beta) | [zip](https://github.com/bymakk/yoho_stream/releases/download/v3.7.33-beta/yoho_stream-3.7.33-chrome.zip) |
+| **3.7.34 beta** | [релиз](https://github.com/bymakk/yoho_stream/releases/tag/v3.7.34-beta) | [zip](https://github.com/bymakk/yoho_stream/releases/download/v3.7.34-beta/yoho_stream-3.7.34-chrome.zip) |
 
 1. Скачайте ZIP и распакуйте (в корне папки должен быть `manifest.json`).
 2. Откройте `chrome://extensions`, включите **Режим разработчика**.

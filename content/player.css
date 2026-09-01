@@ -581,3 +581,35 @@ html.yoho-overlay-mirror .yoho-marker-tooltip {
 video.yoho-video-mirror {
   transform: scaleX(-1) !important;
 }
+
+/* Блюр запретки — класс, не inline filter. Turbo/PJS на паузе и play
+   переписывает style.filter; stylesheet !important это переживает.
+   Включение без transition, чтобы первый кадр сцены не мелькнул.
+   Оконное выключение — 0.2s, чуть перекрывает конец сцены. */
+video {
+  transition: filter 0.2s ease, -webkit-filter 0.2s ease;
+}
+video.yoho-blurred {
+  filter: blur(var(--yoho-blur-amount, 20px)) !important;
+  -webkit-filter: blur(var(--yoho-blur-amount, 20px)) !important;
+  transition: none !important;
+}
+
+/* Chromium fullscreen: <video> уходит в hardware overlay, DOM-панель
+   кликабельна, но не рисуется. filter:opacity без !important — как Video.js /
+   animego; блюр-класс с !important его перекрывает, стопки нет.
+   background — частичный обход Shaka. :fullscreen и :-webkit-full-screen
+   нельзя в одном списке. В fullscreen transition нет: gaussian 0→N на
+   полном кадре роняет FPS. */
+:fullscreen video,
+video:fullscreen {
+  filter: opacity(0.999);
+  background-color: #010101 !important;
+  transition: none !important;
+}
+:-webkit-full-screen video,
+video:-webkit-full-screen {
+  filter: opacity(0.999);
+  background-color: #010101 !important;
+  transition: none !important;
+}
