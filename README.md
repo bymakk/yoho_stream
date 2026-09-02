@@ -4,12 +4,12 @@
 
 ### YoHo Stream Mode
 
-**Расширение для Chrome для просмотра фильмов и сериалов на [yoho.pw](https://yoho.pw) / [reyoho.ru](https://reyoho.ru), в первую очередь для стримеров.**
+**Расширение для Chrome и Firefox для просмотра фильмов и сериалов на [yoho.pw](https://yoho.pw) / [reyoho.ru](https://reyoho.ru), в первую очередь для стримеров.**
 Прячет запретные сцены, выводит информацию о фильме в OBS, нормализует звук и показывает Twitch-чат в плеере.
 
-**Бета:** [3.7.34](https://github.com/bymakk/yoho_stream/releases/tag/v3.7.34-beta) · **[Chrome Web Store](https://chromewebstore.google.com/detail/yoho-stream-mode/akgkcglmdamdfmbcefoekmbjaebeghoe)**
+**Бета:** [3.7.35](https://github.com/bymakk/yoho_stream/releases/tag/v3.7.35-beta) · **[Chrome Web Store](https://chromewebstore.google.com/detail/yoho-stream-mode/akgkcglmdamdfmbcefoekmbjaebeghoe)**
 
-Chrome · Edge · Brave · Opera (Chromium 104+)
+Chrome · Edge · Brave · Opera (Chromium 104+) · Firefox 142+
 
 </div>
 
@@ -42,9 +42,11 @@ Chrome · Edge · Brave · Opera (Chromium 104+)
 
 ### ZIP с GitHub
 
-| Сборка | Релиз | Скачать |
-|--------|-------|---------|
-| **3.7.34 beta** | [релиз](https://github.com/bymakk/yoho_stream/releases/tag/v3.7.34-beta) | [zip](https://github.com/bymakk/yoho_stream/releases/download/v3.7.34-beta/yoho_stream-3.7.34-chrome.zip) |
+| Сборка | Релиз | Chrome · Edge · Brave · Opera | Firefox |
+|--------|-------|------|---------|
+| **3.7.35 beta** | [релиз](https://github.com/bymakk/yoho_stream/releases/tag/v3.7.35-beta) | [zip](https://github.com/bymakk/yoho_stream/releases/download/v3.7.35-beta/yoho_stream-3.7.35-chrome.zip) | [zip](https://github.com/bymakk/yoho_stream/releases/download/v3.7.35-beta/yoho_stream-3.7.35-fox.zip) |
+
+#### Chrome, Edge, Brave, Opera
 
 1. Скачайте ZIP и распакуйте (в корне папки должен быть `manifest.json`).
 2. Откройте `chrome://extensions`, включите **Режим разработчика**.
@@ -52,6 +54,16 @@ Chrome · Edge · Brave · Opera (Chromium 104+)
 
 > **Обновление без потери настроек:** через Chrome Web Store расширение обновляется автоматически, настройки сохраняются. При ручной установке (ZIP) распакуйте новую версию **поверх той же папки** и нажмите **↻ Обновить**. Удаление расширения очищает `chrome.storage`, но настройки также бэкапятся в синхронизацию Chrome (если вы вошли в аккаунт).
 > Требуется Chrome / Edge / Brave / Opera **104+**.
+
+#### Firefox
+
+1. Скачайте ZIP для Firefox и распакуйте.
+2. Откройте `about:debugging#/runtime/this-firefox`.
+3. **«Загрузить временное дополнение»** → выберите `manifest.json` из распакованной папки.
+
+> Требуется Firefox **142+**.
+>
+> **Пока это временная установка:** Firefox снимает такие дополнения при перезапуске браузера — это ограничение самого Firefox, а не сборки. Постоянная установка возможна только после подписи на addons.mozilla.org; когда расширение там появится, здесь будет прямая ссылка.
 
 ---
 

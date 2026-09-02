@@ -586,7 +586,10 @@ video.yoho-video-mirror {
    переписывает style.filter; stylesheet !important это переживает.
    Включение без transition, чтобы первый кадр сцены не мелькнул.
    Оконное выключение — 0.2s, чуть перекрывает конец сцены. */
-video {
+/* Переход ограничен НАШИМ маркерным классом. На голом `video` правило ложилось
+   на КАЖДОЕ видео всех внедряемых доменов — включая ролики, которыми мы не
+   управляем. Класс ставится там же, где мы подписываемся на события видео. */
+video.yoho-managed {
   transition: filter 0.2s ease, -webkit-filter 0.2s ease;
 }
 video.yoho-blurred {
@@ -595,21 +598,38 @@ video.yoho-blurred {
   transition: none !important;
 }
 
-/* Chromium fullscreen: <video> уходит в hardware overlay, DOM-панель
-   кликабельна, но не рисуется. filter:opacity без !important — как Video.js /
-   animego; блюр-класс с !important его перекрывает, стопки нет.
-   background — частичный обход Shaka. :fullscreen и :-webkit-full-screen
-   нельзя в одном списке. В fullscreen transition нет: gaussian 0→N на
-   полном кадре роняет FPS. */
+/*
+ * Chromium fullscreen: <video> уходит в hardware overlay — DOM-панель плеера
+ * остаётся кликабельной, но не рисуется. Снимаем видео с overlay.
+ *
+ * Снимаем ОБЫЧНОЙ прозрачностью, а не `filter: opacity()` (как Video.js #8612):
+ *   - `opacity` считает композитор — это постоянная альфа в уже идущем шаге
+ *     композиции. `filter` — отдельный проход шейдера по всему кадру, каждый
+ *     кадр, в полноэкранном разрешении. Обход включается на ВСЕХ платформах,
+ *     в том числе там, где бага нет вовсе, поэтому цена важна: на слабых ПК
+ *     разница между «почти бесплатно» и «лишний проход» вполне заметна.
+ *   - `filter` остаётся целиком под блюр запретки. Свойства разные, перекрывать
+ *     друг друга им больше нечем — и держать этот инвариант тестом не нужно.
+ * Источник приёма: Intel/MPO, IGCIT #1177.
+ *
+ * `!important` здесь безопасен ИМЕННО потому, что общей строки с блюром больше
+ * нет: раньше его нельзя было ставить, иначе блюр не смог бы перекрыть обход.
+ * Ценой возможной подавленной анимации появления у плеера мы получаем гарантию,
+ * что обход не проиграет по специфичности собственным правилам плеера.
+ *
+ * background — частичный обход Shaka #10207. `:fullscreen` и
+ * `:-webkit-full-screen` нельзя в одном списке: браузер отбросит всё правило.
+ * transition нет — анимировать тут нечего.
+ */
 :fullscreen video,
 video:fullscreen {
-  filter: opacity(0.999);
+  opacity: 0.99999 !important;
   background-color: #010101 !important;
   transition: none !important;
 }
 :-webkit-full-screen video,
 video:-webkit-full-screen {
-  filter: opacity(0.999);
+  opacity: 0.99999 !important;
   background-color: #010101 !important;
   transition: none !important;
 }

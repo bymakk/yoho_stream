@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "YoHo Stream Mode",
-  "version": "3.7.34",
-  "version_name": "3.7.34 beta",
+  "version": "3.7.35",
+  "version_name": "3.7.35 beta",
   "minimum_chrome_version": "105",
   "description": "Блюр запреток, маркеры на прогресс-баре, нормализация звука и совместный просмотр для yoho.pw",
   "permissions": [
