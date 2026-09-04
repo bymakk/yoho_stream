@@ -599,6 +599,26 @@ video.yoho-blurred {
 }
 
 /*
+ * Пока сцена закрашена, `backdrop-filter` наших панелей — чистый расход.
+ *
+ * Подложка у них — то же самое видео, уже размытое на --yoho-blur-amount
+ * (обычно 20-40px). Размыть её сверху ещё на 2px значит НЕ изменить картинку,
+ * но заставить композитор материализовать размытый кадр в отдельную поверхность
+ * и прочитать её обратно как backdrop: два зависимых полноэкранных прохода на
+ * каждый кадр, строго последовательных. Такое не лечится мощной видеокартой —
+ * простой в конвейере, а не нехватка счёта.
+ *
+ * Панели при этом никуда не деваются: полупрозрачный фон и тень текста на месте,
+ * на глаз разницы нет — размывать уже размытое было нечего.
+ */
+html.yoho-scene-blurred .yoho-info-overlay,
+html.yoho-scene-blurred .yoho-warning-pill,
+html.yoho-scene-blurred .yoho-chat-ticker {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/*
  * Chromium fullscreen: <video> уходит в hardware overlay — DOM-панель плеера
  * остаётся кликабельной, но не рисуется. Снимаем видео с overlay.
  *
@@ -620,15 +640,22 @@ video.yoho-blurred {
  * background — частичный обход Shaka #10207. `:fullscreen` и
  * `:-webkit-full-screen` нельзя в одном списке: браузер отбросит всё правило.
  * transition нет — анимировать тут нечего.
+ *
+ * `:not(.yoho-blurred)` — тоже про цену кадра. Пока держится блюр запретки,
+ * видео УЖЕ снято с overlay самим `filter` (тот же механизм, что и в
+ * Video.js #8612), и обход в этот момент не чинит ничего — только добавляет
+ * непрозрачному слою альфа-смешивание поверх дорогого прохода блюра. Снаружи
+ * сцены обход работает как прежде; в режиме OBS локального блюра нет вовсе,
+ * так что там он не отключается никогда.
  */
-:fullscreen video,
-video:fullscreen {
+:fullscreen video:not(.yoho-blurred),
+video:fullscreen:not(.yoho-blurred) {
   opacity: 0.99999 !important;
   background-color: #010101 !important;
   transition: none !important;
 }
-:-webkit-full-screen video,
-video:-webkit-full-screen {
+:-webkit-full-screen video:not(.yoho-blurred),
+video:-webkit-full-screen:not(.yoho-blurred) {
   opacity: 0.99999 !important;
   background-color: #010101 !important;
   transition: none !important;

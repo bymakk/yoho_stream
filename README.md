@@ -7,7 +7,7 @@
 **Расширение для Chrome и Firefox для просмотра фильмов и сериалов на [yoho.pw](https://yoho.pw) / [reyoho.ru](https://reyoho.ru), в первую очередь для стримеров.**
 Прячет запретные сцены, выводит информацию о фильме в OBS, нормализует звук и показывает Twitch-чат в плеере.
 
-**Бета:** [3.7.35](https://github.com/bymakk/yoho_stream/releases/tag/v3.7.35-beta) · **[Chrome Web Store](https://chromewebstore.google.com/detail/yoho-stream-mode/akgkcglmdamdfmbcefoekmbjaebeghoe)**
+**Бета:** [3.7.36](https://github.com/bymakk/yoho_stream/releases/tag/v3.7.36-beta) · **[Chrome Web Store](https://chromewebstore.google.com/detail/yoho-stream-mode/akgkcglmdamdfmbcefoekmbjaebeghoe)**
 
 Chrome · Edge · Brave · Opera (Chromium 104+) · Firefox 142+
 
@@ -44,7 +44,7 @@ Chrome · Edge · Brave · Opera (Chromium 104+) · Firefox 142+
 
 | Сборка | Релиз | Chrome · Edge · Brave · Opera | Firefox |
 |--------|-------|------|---------|
-| **3.7.35 beta** | [релиз](https://github.com/bymakk/yoho_stream/releases/tag/v3.7.35-beta) | [zip](https://github.com/bymakk/yoho_stream/releases/download/v3.7.35-beta/yoho_stream-3.7.35-chrome.zip) | [zip](https://github.com/bymakk/yoho_stream/releases/download/v3.7.35-beta/yoho_stream-3.7.35-fox.zip) |
+| **3.7.36 beta** | [релиз](https://github.com/bymakk/yoho_stream/releases/tag/v3.7.36-beta) | [zip](https://github.com/bymakk/yoho_stream/releases/download/v3.7.36-beta/yoho_stream-3.7.36-chrome.zip) | [zip](https://github.com/bymakk/yoho_stream/releases/download/v3.7.36-beta/yoho_stream-3.7.36-fox.zip) |
 
 #### Chrome, Edge, Brave, Opera
 
