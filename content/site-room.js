@@ -158,31 +158,9 @@
       return;
     }
     if (patrolTimer != null) return;
-    const push = async () => {
+    const push = () => {
       if (document.visibilityState !== "visible") return;
-      const state = await getTabState();
-      const pb = state?.playback ?? null;
-      // Пустой опрос молчит. На странице патруля состояние вкладки наполняется
-      // не сразу, а этот тик идёт раз в секунду — и затирал бы нулями то, что
-      // плеер прислал вместе с ответом на команду.
-      if (!pb && !state?.playerName) return;
-      try {
-        document.dispatchEvent(
-          new CustomEvent("yoho:patrol-state", {
-            detail: {
-              state: {
-                playerName: state?.playerName ?? null,
-                translation: pb?.translation ?? null,
-                season: pb?.season ?? null,
-                episode: pb?.episode ?? null,
-                currentTimeSec: pb?.currentTimeSec ?? null,
-                durationSec: pb?.durationSec ?? null,
-                paused: pb?.paused !== false,
-              },
-            },
-          }),
-        );
-      } catch { /* страница уходит */ }
+      safeMessage({ type: "patrol-cmd", cmd: "state", requestId: `stream-${Date.now()}` });
     };
     void push();
     patrolTimer = setInterval(push, 1000);
@@ -599,6 +577,10 @@
       return false;
     }
     if (message?.type === "patrol-reply") {
+      if (message.requestId?.startsWith("stream-")) {
+        if (patrolTimer != null && message.ok && message.state) document.dispatchEvent(new CustomEvent("yoho:patrol-state", { detail: { state: message.state } }));
+        return false;
+      }
       try {
         document.dispatchEvent(
           new CustomEvent("yoho:patrol-reply", {
@@ -708,6 +690,7 @@
       safeMessage({
         type: "patrol-cmd",
         requestId: d.requestId,
+        context: d.context,
         cmd: d.cmd,
         on: d.on,
         seconds: d.seconds,
