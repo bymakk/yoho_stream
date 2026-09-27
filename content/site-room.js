@@ -95,6 +95,30 @@
   const RESTORE_WINDOW_MS = 8_000;
   /** Последний отданный плееру темп — чтобы не слать одно и то же. */
   let lastRate = 1;
+  /**
+   * Состояние регулятора (room-sync.js). Без него его защита от раскачки не
+   * работала вовсе: импульс темпом не заканчивался, обратная связь во время
+   * манёвра не отключалась, решения не ограничивались по частоте, а своя
+   * позиция сравнивалась несвежей — регулятор гонялся за отставанием, которого
+   * нет. Время замера позиции приходит из фона вместе с ней.
+   */
+  let cachedPosAt = 0;
+  let manoeuvreUntil = 0;
+  let lastDecisionAt = 0;
+  let correcting = false;
+  /** Конец импульса темпом: вернуть 1, когда манёвр отработал. */
+  let rateResetTimer = null;
+
+  /** Смена или уход из комнаты: её ручной режим и темп не переносятся дальше. */
+  function resetRegulator() {
+    detached = false;
+    lastRate = 1;
+    manoeuvreUntil = 0;
+    lastDecisionAt = 0;
+    correcting = false;
+    clearTimeout(rateResetTimer);
+    rateResetTimer = null;
+  }
   /** Срочный такт, пришедший во время уже летящего запроса, — не теряем. */
   let beatAgain = false;
   let observer = null;
@@ -131,13 +155,17 @@
   function onBeaconChanged() {
     const next = readBeacon();
     if (sameRoom(next, room)) return;
+    const prev = room;
     room = next;
     lastSeekAt = 0;
     restored = false;
     restoreDeadline = Date.now() + RESTORE_WINDOW_MS;
+    resetRegulator();
+    // Из комнаты в комнату тоже сначала закрываем прежнюю: по room-clear фон
+    // сбрасывает в кадре плеера её темп и ручной режим.
+    if (prev) safeMessage({ type: "room-clear" });
     if (!room) {
       stopBeat();
-      safeMessage({ type: "room-clear" });
       return;
     }
     // Роль отдаёт сервер — расширение её не додумывает.
@@ -247,16 +275,16 @@
           state?.playback?.paused,
           state?.playback?.translation ?? null,
         );
+        cachedPosAt = state?.playback?.positionAtMs ?? 0;
       }
       const settings = cachedSettings;
       if (!settings?.enabled) return; // фича выключена — комнату не трогаем
 
-      const positionSec = cachedPos.positionSec;
       const paused = cachedPos.paused;
 
       // Пока не восстановились — шлём null вместо позиции: пусть комната
       // помнит нашу прежнюю секунду, а не ноль свежезагруженного плеера.
-      const publishPos = restored ? positionSec : null;
+      const publishPos = restored ? cachedPos.positionSec : null;
       // Запустил воспроизведение — значит готов смотреть. Отдельной кнопки для
       // этого не нужно: человек и так делает ровно то действие, которое эту
       // готовность подтверждает. Обратно в «не готов» не сваливаем — пауза
@@ -268,13 +296,14 @@
         // 404 = комнаты больше нет; на 429/5xx просто пропускаем такт.
         if (beatRes.status === 404) {
           room = null;
+          resetRegulator();
           stopBeat();
           safeMessage({ type: "room-clear" });
         }
         return;
       }
       lastView = beatRes.view;
-      applyRoomState(lastView, settings, positionSec, paused, 0);
+      applyRoomState(lastView, settings);
     } catch {
       /* сеть моргнула — следующий такт повторит */
     } finally {
@@ -286,17 +315,25 @@
     }
   }
 
-  /** Свежее состояние комнаты → решение → команды плееру. */
-  function applyRoomState(view, settings, positionSec, paused, frameAgeMs) {
+  /**
+   * Свежее состояние комнаты → решение → команды плееру. Кадр применяем в
+   * момент прихода, поэтому возраст кадра у нас (frameAgeMs) — ноль.
+   */
+  function applyRoomState(view, settings) {
     const decision = RS.decideRoomAction({
       room: view,
       myUserId: room?.me,
       settings,
-      positionSec,
-      paused,
+      positionSec: cachedPos.positionSec,
+      paused: cachedPos.paused,
       nowMs: Date.now(),
       lastSeekAt,
-      frameAgeMs: frameAgeMs ?? 0,
+      frameAgeMs: 0,
+      positionAtMs: cachedPosAt,
+      rate: lastRate,
+      manoeuvreUntil,
+      lastDecisionAt,
+      correcting,
     });
     applyDecision(decision, view, settings);
   }
@@ -326,14 +363,7 @@
       // Ни одного лишнего ожидания: настройки и позиция уже в кеше, а команда
       // плееру должна уйти в тот же момент, когда пришёл кадр потока.
       if (!cachedSettings?.enabled) return;
-      const arrivedAt = Date.now();
-      applyRoomState(
-        view,
-        cachedSettings,
-        cachedPos.positionSec,
-        cachedPos.paused,
-        Date.now() - arrivedAt,
-      );
+      applyRoomState(view, cachedSettings);
     };
   }
 
@@ -371,6 +401,7 @@
       lastRate = decision.setRate;
       safeMessage({ type: "room-rate", rate: decision.setRate });
     }
+    trackManoeuvre(decision);
     if (decision.desync) notifyDesync(Date.now());
 
     // Оверлей отставших рисует плеер — ему нужен только список.
@@ -391,6 +422,35 @@
     if (policy) patch.policy = policy;
     if (Object.keys(patch).length) {
       void post({ action: "playback", id: room.id, ...patch }).catch(() => {});
+    }
+  }
+
+  /**
+   * Учёт манёвра по решению регулятора.
+   *
+   * Импульс темпом ИМПУЛЬСНЫЙ (как в Jellyfin SyncPlay): на manoeuvreMs темп
+   * меняется, обратная связь на это время отключена, потом темп возвращается в
+   * 1 — и только следующий замер решает, нужен ли ещё импульс. Раньше темп
+   * оставался 1,05× до случайного «в синхроне», и регулятор раскачивал плеер.
+   */
+  function trackManoeuvre(decision) {
+    const now = Date.now();
+    if (decision.seekToSec != null || decision.setRate != null) lastDecisionAt = now;
+    if (decision.setRate != null && decision.setRate !== 1 && decision.manoeuvreMs != null) {
+      correcting = true;
+      manoeuvreUntil = now + decision.manoeuvreMs;
+      clearTimeout(rateResetTimer);
+      rateResetTimer = setTimeout(() => {
+        rateResetTimer = null;
+        if (!room || detached || lastRate === 1) return;
+        lastRate = 1;
+        safeMessage({ type: "room-rate", rate: 1 });
+      }, decision.manoeuvreMs);
+    } else if (decision.setRate === 1) {
+      // В синхроне или перемотали: коррекция закончена.
+      correcting = false;
+      clearTimeout(rateResetTimer);
+      rateResetTimer = null;
     }
   }
 
@@ -514,6 +574,9 @@
     beatTimer = null;
     if (nudgeTimer) clearTimeout(nudgeTimer);
     nudgeTimer = null;
+    // Комнаты больше нет: незавершённый импульс темпа не должен командовать плеером.
+    clearTimeout(rateResetTimer);
+    rateResetTimer = null;
     closeStream();
     safeMessage({ type: "room-laggards", laggards: [] });
   }
@@ -645,8 +708,11 @@
         // неё, поле становилось undefined — и syncTranslation навсегда выходил
         // по «нечего сравнивать». Отсюда и «озвучки не переключаются».
         cachedPos = RS.ownState(message.currentTimeSec, message.paused, cachedPos.translation);
+        cachedPosAt = Date.now();
       }
-      nudge();
+      // Фон шлёт позицию каждую секунду, чтобы замер не устаревал. Внеочередной
+      // такт нужен только на событие: перемотка, пауза, смена плеера.
+      if (message.urgent) nudge();
     }
     return false;
   });

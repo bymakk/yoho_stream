@@ -382,6 +382,17 @@
   const RUNTIME_POLL_FAST_MS = 6000;
   const RUNTIME_POLL_SLOW_MS = 60000;
 
+  /**
+   * Уже отправленные кортежи (дедуп между сессиями). Список ограничен: без
+   * предела он рос на каждую новую серию/озвучку навсегда и целиком
+   * перечитывался и переписывался в storage на каждый отчёт. Вытесненный
+   * кортеж, встреченный снова, просто уйдёт повторно — сервер идемпотентен.
+   */
+  const RUNTIME_POSTED_MAX = 500;
+  function withRuntimePosted(list, key) {
+    return list.concat(key).slice(-RUNTIME_POSTED_MAX);
+  }
+
   function ensureRuntimeInstallId(cb) {
     if (runtimeInstallId) {
       cb(runtimeInstallId);
@@ -465,7 +476,7 @@
         runtimeReported.delete(dedupKey); // не смогли — дадим повтору шанс
         return;
       }
-      extStoreSet({ yohoRuntimePosted: postedList.concat(dedupKey) });
+      extStoreSet({ yohoRuntimePosted: withRuntimePosted(postedList, dedupKey) });
       try {
         // Плеер шлёт СЫРОЕ имя (playerName): нормализацию к источнику и проверку
         // по белому списку делает сервер (sourceFromExtensionPlayer). Длительность
