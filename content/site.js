@@ -14,6 +14,17 @@
   const REFRESH_DEBOUNCE_MS = 150; // coalesce focus/visibility refresh triggers
   const NAV_SETTLE_MS = 300; // wait for SPA route content to render after nav
 
+  /**
+   * Вложенный кадр. site.js внедряется во все кадры ради одного случая:
+   * модерация, страница таймингов тайтла и патруль показывают плеер в iframe —
+   * странице фильма с ?moderation=1 или ?patrol=1. У верхней страницы там
+   * маячка нет, и без этого кадра расширение не знало, какой фильм в плеере, а
+   * сайт сверяет с ним каждое состояние плеера. Такой кадр объявляет ТОЛЬКО
+   * фильм: без таймингов (модератор обязан видеть сцену — блюр и метки ему не
+   * нужны) и без отчётов о длительности. Прочие вложенные кадры молчат.
+   */
+  const IN_SUBFRAME = window !== window.top;
+
   let currentFilmKey = null;
   let currentMetaSig = null;
   let fetchAbortController = null;
@@ -92,6 +103,12 @@
       /^\/(film|series|movie|tv|anime|cartoon|show)\/([^/?#]+)/i,
     );
     return m ? `${m[1].toLowerCase()}/${m[2]}` : null;
+  }
+
+  /** Страница фильма в iframe модерации или патруля (см. IN_SUBFRAME). */
+  function isFilmEmbedFrame() {
+    const q = new URLSearchParams(location.search);
+    return !!filmPathId() && (q.get("moderation") === "1" || q.get("patrol") === "1");
   }
 
   /** After SPA nav the URL changes before the beacon node does. Don't push the
@@ -173,6 +190,13 @@
       return;
     }
 
+    if (IN_SUBFRAME) {
+      currentFilmKey = key;
+      currentMetaSig = sig;
+      safeMessage({ type: "film-update", filmKey: key, filmMeta: meta, warnings: [], seq: ++filmFetchSeq });
+      return;
+    }
+
     startRuntimeReporting();
     fetchAbortController = new AbortController();
     const seq = ++filmFetchSeq;
@@ -235,6 +259,7 @@
   }
 
   async function refreshCurrentFilmWarnings(force = false) {
+    if (IN_SUBFRAME) return; // кадр модерации объявляет только фильм
     const now = Date.now();
     if (!force && now - lastRefreshAt < REFRESH_MIN_INTERVAL_MS) return;
 
@@ -645,6 +670,7 @@
   function init() {
     if (window.__yohoSiteInit) return;
     if (!YOHO_ORIGINS.includes(window.location.origin)) return;
+    if (IN_SUBFRAME && !isFilmEmbedFrame()) return;
 
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", init, { once: true });
@@ -654,7 +680,8 @@
     siteActive = true;
     // New page session: SW filmUpdateSeqByTab must reset too (see tabs.onUpdated +
     // site-session-reset) or F5 rejects seq=1 and timings never reach the player.
-    safeMessage({ type: "site-session-reset" });
+    // Счётчик в фоне ведётся только для верхнего кадра — вложенному сбрасывать нечего.
+    if (!IN_SUBFRAME) safeMessage({ type: "site-session-reset" });
 
     window.addEventListener("yoho-warning-vote", () => {
       void refreshCurrentFilmWarnings(true).then(() => {
@@ -739,9 +766,10 @@
     }
   }
 
-  // site.js only runs in the top frame (no all_frames in manifest) — the
+  // Only the top frame acts here (blankAbandonedFilmIframes checks window.top):
+  // in a moderation/patrol embed the path is a film page, never /patrol. The
   // leftover-media-under-patrol case for nested same-origin player frames is
-  // handled by content/player.js (its bundle IS all_frames), not here.
+  // handled by content/player.js, not here.
   //
   // The observer only needs to run while ON /patrol: attach on entry, detach
   // on exit, instead of scanning the whole document's DOM churn on every page
