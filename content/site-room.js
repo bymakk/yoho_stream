@@ -760,6 +760,7 @@
         cmd: d.cmd,
         on: d.on,
         seconds: d.seconds,
+        play: d.play,
         fromSec: d.fromSec,
         durationSec: d.durationSec,
         loop: d.loop,
