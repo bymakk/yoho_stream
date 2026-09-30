@@ -7,7 +7,7 @@
 **Расширение для Chrome и Firefox для просмотра фильмов и сериалов на [yoho.pw](https://yoho.pw) / [reyoho.ru](https://reyoho.ru), в первую очередь для стримеров.**
 Прячет запретные сцены, выводит информацию о фильме в OBS, нормализует звук и показывает Twitch-чат в плеере.
 
-**Бета:** [3.7.41](https://github.com/bymakk/yoho_stream/releases/tag/v3.7.41-beta) · **[Chrome Web Store](https://chromewebstore.google.com/detail/yoho-stream-mode/akgkcglmdamdfmbcefoekmbjaebeghoe)**
+**Бета:** [3.7.42](https://github.com/bymakk/yoho_stream/releases/tag/v3.7.42-beta) · **[Chrome Web Store](https://chromewebstore.google.com/detail/yoho-stream-mode/akgkcglmdamdfmbcefoekmbjaebeghoe)**
 
 Chrome · Edge · Brave · Opera (Chromium 104+) · Firefox 142+
 
@@ -44,7 +44,7 @@ Chrome · Edge · Brave · Opera (Chromium 104+) · Firefox 142+
 
 | Сборка | Релиз | Chrome · Edge · Brave · Opera | Firefox |
 |--------|-------|------|---------|
-| **3.7.41 beta** | [релиз](https://github.com/bymakk/yoho_stream/releases/tag/v3.7.41-beta) | [zip](https://github.com/bymakk/yoho_stream/releases/download/v3.7.41-beta/yoho_stream-3.7.41-chrome.zip) | [zip](https://github.com/bymakk/yoho_stream/releases/download/v3.7.41-beta/yoho_stream-3.7.41-fox.zip) |
+| **3.7.42 beta** | [релиз](https://github.com/bymakk/yoho_stream/releases/tag/v3.7.42-beta) | [zip](https://github.com/bymakk/yoho_stream/releases/download/v3.7.42-beta/yoho_stream-3.7.42-chrome.zip) | [zip](https://github.com/bymakk/yoho_stream/releases/download/v3.7.42-beta/yoho_stream-3.7.42-fox.zip) |
 
 #### Chrome, Edge, Brave, Opera
 
@@ -202,7 +202,7 @@ Chrome · Edge · Brave · Opera (Chromium 104+) · Firefox 142+
 |---|---|---|
 | **Alloha** (Plyr) | `*.alloha.tv` · `*.stravers.live` | Блюр сцен, маркеры на таймлайне, запуск / пауза / перемотка. |
 | **Turbo** (Playerjs) | `*.obrut.show` · `*.turbo.ms` | То же, через нативный канал плеера. |
-| **Collaps** (VenomPlayer) | `*.ortified.ws` · `*.collaps.org` · `*.collaps.cc` · `*.collaps.ink` | То же. |
+| **Collaps** (VenomPlayer) | `*.nextembed.ws` · `*.ortified.ws` · `*.collaps.org` · `*.collaps.cc` · `*.collaps.ink` | То же. |
 
 ### 🧩 Прочие источники балансеров
 Сайт может открыть плеер и на этих хостах. Доступ нужен, чтобы прочитать кадр и определить плеер; полноценно (блюр / маркеры / управление) поддержаны только Alloha, Turbo и Collaps.
